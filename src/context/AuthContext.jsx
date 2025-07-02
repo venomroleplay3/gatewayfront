@@ -34,11 +34,15 @@ export const AuthProvider = ({ children }) => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event, session)
+        
         if (session?.user) {
           const currentUser = await authService.getCurrentUser()
           setUser(currentUser)
         } else {
           setUser(null)
+          // Clear demo user if exists
+          localStorage.removeItem('demo_user')
         }
         setLoading(false)
       }
@@ -51,6 +55,14 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true)
       const data = await authService.signIn(credentials.email, credentials.password)
+      
+      // Handle demo user
+      if (credentials.email === 'admin@gateway.com') {
+        localStorage.setItem('demo_user', JSON.stringify(data.user))
+        const currentUser = await authService.getCurrentUser()
+        setUser(currentUser)
+      }
+      
       return { success: true, data }
     } catch (error) {
       console.error('Login error:', error)
@@ -60,19 +72,58 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  const register = async (userData) => {
+    try {
+      setLoading(true)
+      const data = await authService.signUp(userData.email, userData.password, {
+        full_name: userData.fullName
+      })
+      return { success: true, data }
+    } catch (error) {
+      console.error('Register error:', error)
+      return { success: false, error: error.message }
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const logout = async () => {
     try {
       await authService.signOut()
+      localStorage.removeItem('demo_user')
       setUser(null)
     } catch (error) {
       console.error('Logout error:', error)
     }
   }
 
+  const resetPassword = async (email) => {
+    try {
+      const result = await authService.resetPassword(email)
+      return { success: true, data: result }
+    } catch (error) {
+      console.error('Reset password error:', error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  const updatePassword = async (newPassword) => {
+    try {
+      const result = await authService.updatePassword(newPassword)
+      return { success: true, data: result }
+    } catch (error) {
+      console.error('Update password error:', error)
+      return { success: false, error: error.message }
+    }
+  }
+
   const value = {
     user,
     login,
+    register,
     logout,
+    resetPassword,
+    updatePassword,
     loading,
     isAuthenticated: !!user,
     isAdmin: user?.profile?.role === 'admin'

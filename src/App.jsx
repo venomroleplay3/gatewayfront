@@ -13,6 +13,7 @@ import Users from './pages/Users'
 import Analytics from './pages/Analytics'
 import Settings from './pages/Settings'
 import Login from './pages/Login'
+import ResetPassword from './pages/ResetPassword'
 
 // Context
 import { ThemeProvider } from './context/ThemeContext'
@@ -50,7 +51,7 @@ const ProtectedRoute = ({ children }) => {
   
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-secondary-50 via-white to-primary-50 dark:from-secondary-950 dark:via-secondary-900 dark:to-secondary-950">
         <div className="loading-spinner"></div>
       </div>
     )
@@ -69,6 +70,7 @@ function App() {
             <AnimatePresence mode="wait">
               <Routes>
                 <Route path="/login" element={<Login />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route
                   path="/"
                   element={
