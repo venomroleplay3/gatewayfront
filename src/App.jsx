@@ -12,6 +12,8 @@ import Products from './pages/Products'
 import Users from './pages/Users'
 import Analytics from './pages/Analytics'
 import Settings from './pages/Settings'
+import Reports from './pages/Reports'
+import Documentation from './pages/Documentation'
 import Login from './pages/Login'
 import ResetPassword from './pages/ResetPassword'
 
@@ -117,6 +119,26 @@ function App() {
                     <ProtectedRoute>
                       <Layout>
                         <Analytics />
+                      </Layout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/reports"
+                  element={
+                    <ProtectedRoute>
+                      <Layout>
+                        <Reports />
+                      </Layout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/documentation"
+                  element={
+                    <ProtectedRoute>
+                      <Layout>
+                        <Documentation />
                       </Layout>
                     </ProtectedRoute>
                   }

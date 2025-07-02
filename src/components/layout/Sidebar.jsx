@@ -9,16 +9,20 @@ import {
   BarChart3,
   Settings,
   X,
-  Shield
+  Shield,
+  FileText,
+  Book
 } from 'lucide-react'
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Licenses', href: '/licenses', icon: Key },
-  { name: 'Products', href: '/products', icon: Package },
-  { name: 'Users', href: '/users', icon: Users },
-  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
-  { name: 'Settings', href: '/settings', icon: Settings },
+  { name: 'Kontrol Paneli', href: '/', icon: LayoutDashboard },
+  { name: 'Lisanslar', href: '/licenses', icon: Key },
+  { name: 'Ürünler', href: '/products', icon: Package },
+  { name: 'Kullanıcılar', href: '/users', icon: Users },
+  { name: 'Analitik', href: '/analytics', icon: BarChart3 },
+  { name: 'Raporlar', href: '/reports', icon: FileText },
+  { name: 'API Docs', href: '/documentation', icon: Book },
+  { name: 'Ayarlar', href: '/settings', icon: Settings },
 ]
 
 const Sidebar = ({ isOpen, onClose }) => {
@@ -56,7 +60,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               </div>
               <div>
                 <h1 className="text-xl font-bold gradient-text">GateWay</h1>
-                <p className="text-xs text-secondary-500">License Management</p>
+                <p className="text-xs text-secondary-500">Lisans Yönetimi</p>
               </div>
             </div>
             
@@ -99,8 +103,8 @@ const Sidebar = ({ isOpen, onClose }) => {
                   <div className="w-2 h-2 bg-white rounded-full animate-pulse-slow"></div>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-secondary-900 dark:text-secondary-100">System Status</p>
-                  <p className="text-xs text-success-600 dark:text-success-400">All systems operational</p>
+                  <p className="text-sm font-medium text-secondary-900 dark:text-secondary-100">Sistem Durumu</p>
+                  <p className="text-xs text-success-600 dark:text-success-400">Tüm sistemler çalışıyor</p>
                 </div>
               </div>
             </div>

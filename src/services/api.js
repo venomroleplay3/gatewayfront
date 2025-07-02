@@ -553,5 +553,50 @@ export const reportsService = {
         createdAt: user.created_at
       }))
     }
+  },
+
+  async generateRevenueReport() {
+    const licenses = await licensesService.getAll()
+    const products = await productsService.getAll()
+    
+    const revenue = licenses.reduce((total, license) => {
+      const product = products.find(p => p.id === license.product_id)
+      return total + (product?.price || 0)
+    }, 0)
+
+    return {
+      generatedAt: new Date().toISOString(),
+      totalRevenue: revenue,
+      totalLicenses: licenses.length,
+      averageRevenuePerLicense: licenses.length > 0 ? revenue / licenses.length : 0,
+      revenueByProduct: products.map(product => {
+        const productLicenses = licenses.filter(l => l.product_id === product.id)
+        return {
+          productName: product.name,
+          licenseCount: productLicenses.length,
+          revenue: productLicenses.length * product.price
+        }
+      })
+    }
+  },
+
+  async generateFullReport() {
+    const [licenseReport, userReport, revenueReport] = await Promise.all([
+      this.generateLicenseReport(),
+      this.generateUserReport(),
+      this.generateRevenueReport()
+    ])
+
+    return {
+      generatedAt: new Date().toISOString(),
+      summary: {
+        totalLicenses: licenseReport.totalLicenses,
+        totalUsers: userReport.totalUsers,
+        totalRevenue: revenueReport.totalRevenue
+      },
+      licenses: licenseReport,
+      users: userReport,
+      revenue: revenueReport
+    }
   }
 }

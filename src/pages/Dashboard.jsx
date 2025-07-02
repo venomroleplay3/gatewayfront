@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import {
   Key,
   Users,
@@ -9,25 +10,46 @@ import {
   Shield,
   Clock,
   AlertTriangle,
-  Plus
+  Plus,
+  FileText,
+  Settings as SettingsIcon
 } from 'lucide-react'
 import StatCard from '../components/ui/StatCard'
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card'
 import Button from '../components/ui/Button'
 import CreateLicenseModal from '../components/modals/CreateLicenseModal'
+import CreateProductModal from '../components/modals/CreateProductModal'
 import { useApi } from '../hooks/useApi'
 import { analyticsService } from '../services/api'
 import { format } from 'date-fns'
 
 const Dashboard = () => {
   const [showCreateLicense, setShowCreateLicense] = useState(false)
+  const [showCreateProduct, setShowCreateProduct] = useState(false)
   const { data: stats, loading, refetch } = useApi(() => analyticsService.getDashboardStats(), [])
+  const navigate = useNavigate()
 
   const handleCreateLicense = () => {
     setShowCreateLicense(true)
   }
 
+  const handleCreateProduct = () => {
+    setShowCreateProduct(true)
+  }
+
+  const handleViewReports = () => {
+    navigate('/reports')
+  }
+
+  const handleManageUsers = () => {
+    navigate('/users')
+  }
+
   const handleLicenseCreated = () => {
+    refetch()
+  }
+
+  const handleProductCreated = () => {
     refetch()
   }
 
@@ -41,7 +63,7 @@ const Dashboard = () => {
 
   const dashboardStats = [
     {
-      title: 'Active Licenses',
+      title: 'Aktif Lisanslar',
       value: stats?.activeLicenses?.toString() || '0',
       change: '+12.5%',
       icon: Key,
@@ -49,7 +71,7 @@ const Dashboard = () => {
       color: 'primary'
     },
     {
-      title: 'Total Users',
+      title: 'Toplam Kullanıcı',
       value: stats?.totalUsers?.toString() || '0',
       change: '+8.2%',
       icon: Users,
@@ -57,7 +79,7 @@ const Dashboard = () => {
       color: 'success'
     },
     {
-      title: 'Products',
+      title: 'Ürünler',
       value: stats?.totalProducts?.toString() || '0',
       change: '+2',
       icon: Package,
@@ -65,8 +87,8 @@ const Dashboard = () => {
       color: 'accent'
     },
     {
-      title: 'Revenue',
-      value: '$24,567',
+      title: 'Gelir',
+      value: '₺24,567',
       change: '+15.3%',
       icon: TrendingUp,
       trend: 'up',
@@ -107,13 +129,13 @@ const Dashboard = () => {
   const getActivityMessage = (activity) => {
     switch (activity.event_type) {
       case 'license_created':
-        return `New license created for ${activity.licenses?.products?.name || 'product'}`
+        return `${activity.licenses?.products?.name || 'ürün'} için yeni lisans oluşturuldu`
       case 'user_registered':
-        return 'New user registered'
+        return 'Yeni kullanıcı kaydoldu'
       case 'license_expired':
-        return 'License expired'
+        return 'Lisans süresi doldu'
       case 'product_updated':
-        return 'Product updated'
+        return 'Ürün güncellendi'
       default:
         return activity.event_type
     }
@@ -128,20 +150,20 @@ const Dashboard = () => {
         className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
       >
         <div>
-          <h1 className="text-3xl font-bold gradient-text">Dashboard</h1>
+          <h1 className="text-3xl font-bold gradient-text">Kontrol Paneli</h1>
           <p className="text-secondary-600 dark:text-secondary-400 mt-1">
-            Welcome back! Here's what's happening with your licenses.
+            Hoş geldiniz! Lisanslarınızla ilgili güncel bilgiler burada.
           </p>
         </div>
         
         <div className="flex items-center gap-3">
-          <Button variant="secondary" size="sm">
-            <Activity className="w-4 h-4 mr-2" />
-            View Reports
+          <Button variant="secondary" size="sm" onClick={handleViewReports}>
+            <FileText className="w-4 h-4 mr-2" />
+            Raporları Görüntüle
           </Button>
           <Button size="sm" onClick={handleCreateLicense}>
             <Shield className="w-4 h-4 mr-2" />
-            Create License
+            Lisans Oluştur
           </Button>
         </div>
       </motion.div>
@@ -165,14 +187,14 @@ const Dashboard = () => {
         {/* Chart Card */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>License Usage Overview</CardTitle>
+            <CardTitle>Lisans Kullanım Genel Bakış</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-64 bg-gradient-to-br from-primary-50 to-accent-50 dark:from-primary-900/20 dark:to-accent-900/20 rounded-xl flex items-center justify-center">
               <div className="text-center">
                 <TrendingUp className="w-12 h-12 text-primary-500 mx-auto mb-4" />
                 <p className="text-secondary-600 dark:text-secondary-400">
-                  Chart component will be integrated here
+                  Grafik bileşeni burada entegre edilecek
                 </p>
               </div>
             </div>
@@ -184,7 +206,7 @@ const Dashboard = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="w-5 h-5" />
-              Recent Activity
+              Son Aktiviteler
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -220,7 +242,7 @@ const Dashboard = () => {
                           {getActivityMessage(activity)}
                         </p>
                         <p className="text-xs text-secondary-500 mt-1">
-                          {format(new Date(activity.created_at), 'MMM dd, HH:mm')}
+                          {format(new Date(activity.created_at), 'dd MMM, HH:mm')}
                         </p>
                       </div>
                     </motion.div>
@@ -229,7 +251,7 @@ const Dashboard = () => {
               ) : (
                 <div className="text-center py-8">
                   <Activity className="w-8 h-8 text-secondary-400 mx-auto mb-2" />
-                  <p className="text-sm text-secondary-500">No recent activity</p>
+                  <p className="text-sm text-secondary-500">Henüz aktivite yok</p>
                 </div>
               )}
             </div>
@@ -240,7 +262,7 @@ const Dashboard = () => {
       {/* Quick Actions */}
       <Card>
         <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
+          <CardTitle>Hızlı İşlemler</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -251,36 +273,38 @@ const Dashboard = () => {
             >
               <Key className="w-8 h-8 text-primary-600 mb-3 group-hover:scale-110 transition-transform" />
               <h3 className="font-semibold text-secondary-900 dark:text-secondary-100 mb-1">
-                Create License
+                Lisans Oluştur
               </h3>
               <p className="text-sm text-secondary-600 dark:text-secondary-400">
-                Generate a new license for your products
+                Ürünleriniz için yeni lisans oluşturun
               </p>
             </motion.div>
 
             <motion.div
               whileHover={{ scale: 1.02 }}
               className="p-4 rounded-xl bg-gradient-to-br from-success-50 to-success-100 dark:from-success-900/20 dark:to-success-800/20 border border-success-200 dark:border-success-800 cursor-pointer group"
+              onClick={handleManageUsers}
             >
               <Users className="w-8 h-8 text-success-600 mb-3 group-hover:scale-110 transition-transform" />
               <h3 className="font-semibold text-secondary-900 dark:text-secondary-100 mb-1">
-                Manage Users
+                Kullanıcıları Yönet
               </h3>
               <p className="text-sm text-secondary-600 dark:text-secondary-400">
-                View and manage user accounts
+                Kullanıcı hesaplarını görüntüleyin ve yönetin
               </p>
             </motion.div>
 
             <motion.div
               whileHover={{ scale: 1.02 }}
               className="p-4 rounded-xl bg-gradient-to-br from-accent-50 to-accent-100 dark:from-accent-900/20 dark:to-accent-800/20 border border-accent-200 dark:border-accent-800 cursor-pointer group"
+              onClick={handleCreateProduct}
             >
               <Package className="w-8 h-8 text-accent-600 mb-3 group-hover:scale-110 transition-transform" />
               <h3 className="font-semibold text-secondary-900 dark:text-secondary-100 mb-1">
-                Add Product
+                Ürün Ekle
               </h3>
               <p className="text-sm text-secondary-600 dark:text-secondary-400">
-                Create a new product for licensing
+                Lisanslama için yeni ürün oluşturun
               </p>
             </motion.div>
           </div>
@@ -292,6 +316,13 @@ const Dashboard = () => {
         isOpen={showCreateLicense}
         onClose={() => setShowCreateLicense(false)}
         onSuccess={handleLicenseCreated}
+      />
+
+      {/* Create Product Modal */}
+      <CreateProductModal
+        isOpen={showCreateProduct}
+        onClose={() => setShowCreateProduct(false)}
+        onSuccess={handleProductCreated}
       />
     </div>
   )
