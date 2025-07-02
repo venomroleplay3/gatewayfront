@@ -17,7 +17,10 @@
     "react-hot-toast": "^2.4.0",
     "lucide-react": "^0.303.0",
     "clsx": "^2.0.0",
-    "tailwind-merge": "^2.2.0"
+    "tailwind-merge": "^2.2.0",
+    "@supabase/supabase-js": "^2.39.0",
+    "date-fns": "^3.0.0",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@types/react": "^18.2.0",

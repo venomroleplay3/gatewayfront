@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   Key,
@@ -8,17 +8,41 @@ import {
   Activity,
   Shield,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  Plus
 } from 'lucide-react'
 import StatCard from '../components/ui/StatCard'
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card'
 import Button from '../components/ui/Button'
+import CreateLicenseModal from '../components/modals/CreateLicenseModal'
+import { useApi } from '../hooks/useApi'
+import { analyticsService } from '../services/api'
+import { format } from 'date-fns'
 
 const Dashboard = () => {
-  const stats = [
+  const [showCreateLicense, setShowCreateLicense] = useState(false)
+  const { data: stats, loading, refetch } = useApi(() => analyticsService.getDashboardStats(), [])
+
+  const handleCreateLicense = () => {
+    setShowCreateLicense(true)
+  }
+
+  const handleLicenseCreated = () => {
+    refetch()
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="loading-spinner"></div>
+      </div>
+    )
+  }
+
+  const dashboardStats = [
     {
       title: 'Active Licenses',
-      value: '2,847',
+      value: stats?.activeLicenses?.toString() || '0',
       change: '+12.5%',
       icon: Key,
       trend: 'up',
@@ -26,7 +50,7 @@ const Dashboard = () => {
     },
     {
       title: 'Total Users',
-      value: '1,234',
+      value: stats?.totalUsers?.toString() || '0',
       change: '+8.2%',
       icon: Users,
       trend: 'up',
@@ -34,7 +58,7 @@ const Dashboard = () => {
     },
     {
       title: 'Products',
-      value: '56',
+      value: stats?.totalProducts?.toString() || '0',
       change: '+2',
       icon: Package,
       trend: 'up',
@@ -50,40 +74,50 @@ const Dashboard = () => {
     }
   ]
 
-  const recentActivity = [
-    {
-      id: 1,
-      type: 'license_created',
-      message: 'New license created for Product A',
-      time: '2 minutes ago',
-      icon: Key,
-      color: 'success'
-    },
-    {
-      id: 2,
-      type: 'user_registered',
-      message: 'New user registered: john@example.com',
-      time: '5 minutes ago',
-      icon: Users,
-      color: 'primary'
-    },
-    {
-      id: 3,
-      type: 'license_expired',
-      message: 'License expired for user@domain.com',
-      time: '10 minutes ago',
-      icon: AlertTriangle,
-      color: 'warning'
-    },
-    {
-      id: 4,
-      type: 'product_updated',
-      message: 'Product B updated to version 2.1.0',
-      time: '15 minutes ago',
-      icon: Package,
-      color: 'accent'
+  const getActivityIcon = (eventType) => {
+    switch (eventType) {
+      case 'license_created':
+        return Key
+      case 'user_registered':
+        return Users
+      case 'license_expired':
+        return AlertTriangle
+      case 'product_updated':
+        return Package
+      default:
+        return Activity
     }
-  ]
+  }
+
+  const getActivityColor = (eventType) => {
+    switch (eventType) {
+      case 'license_created':
+        return 'success'
+      case 'user_registered':
+        return 'primary'
+      case 'license_expired':
+        return 'warning'
+      case 'product_updated':
+        return 'accent'
+      default:
+        return 'primary'
+    }
+  }
+
+  const getActivityMessage = (activity) => {
+    switch (activity.event_type) {
+      case 'license_created':
+        return `New license created for ${activity.licenses?.products?.name || 'product'}`
+      case 'user_registered':
+        return 'New user registered'
+      case 'license_expired':
+        return 'License expired'
+      case 'product_updated':
+        return 'Product updated'
+      default:
+        return activity.event_type
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -105,7 +139,7 @@ const Dashboard = () => {
             <Activity className="w-4 h-4 mr-2" />
             View Reports
           </Button>
-          <Button size="sm">
+          <Button size="sm" onClick={handleCreateLicense}>
             <Shield className="w-4 h-4 mr-2" />
             Create License
           </Button>
@@ -114,7 +148,7 @@ const Dashboard = () => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => (
+        {dashboardStats.map((stat, index) => (
           <motion.div
             key={stat.title}
             initial={{ opacity: 0, y: 20 }}
@@ -155,37 +189,49 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentActivity.map((activity, index) => (
-                <motion.div
-                  key={activity.id}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="flex items-start gap-3 p-3 rounded-lg hover:bg-secondary-50 dark:hover:bg-secondary-800/50 transition-colors"
-                >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    activity.color === 'success' ? 'bg-success-100 dark:bg-success-900/20' :
-                    activity.color === 'primary' ? 'bg-primary-100 dark:bg-primary-900/20' :
-                    activity.color === 'warning' ? 'bg-warning-100 dark:bg-warning-900/20' :
-                    'bg-accent-100 dark:bg-accent-900/20'
-                  }`}>
-                    <activity.icon className={`w-4 h-4 ${
-                      activity.color === 'success' ? 'text-success-600' :
-                      activity.color === 'primary' ? 'text-primary-600' :
-                      activity.color === 'warning' ? 'text-warning-600' :
-                      'text-accent-600'
-                    }`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
-                      {activity.message}
-                    </p>
-                    <p className="text-xs text-secondary-500 mt-1">
-                      {activity.time}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
+              {stats?.recentActivities?.length > 0 ? (
+                stats.recentActivities.map((activity, index) => {
+                  const Icon = getActivityIcon(activity.event_type)
+                  const color = getActivityColor(activity.event_type)
+                  
+                  return (
+                    <motion.div
+                      key={activity.id}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="flex items-start gap-3 p-3 rounded-lg hover:bg-secondary-50 dark:hover:bg-secondary-800/50 transition-colors"
+                    >
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        color === 'success' ? 'bg-success-100 dark:bg-success-900/20' :
+                        color === 'primary' ? 'bg-primary-100 dark:bg-primary-900/20' :
+                        color === 'warning' ? 'bg-warning-100 dark:bg-warning-900/20' :
+                        'bg-accent-100 dark:bg-accent-900/20'
+                      }`}>
+                        <Icon className={`w-4 h-4 ${
+                          color === 'success' ? 'text-success-600' :
+                          color === 'primary' ? 'text-primary-600' :
+                          color === 'warning' ? 'text-warning-600' :
+                          'text-accent-600'
+                        }`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
+                          {getActivityMessage(activity)}
+                        </p>
+                        <p className="text-xs text-secondary-500 mt-1">
+                          {format(new Date(activity.created_at), 'MMM dd, HH:mm')}
+                        </p>
+                      </div>
+                    </motion.div>
+                  )
+                })
+              ) : (
+                <div className="text-center py-8">
+                  <Activity className="w-8 h-8 text-secondary-400 mx-auto mb-2" />
+                  <p className="text-sm text-secondary-500">No recent activity</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -201,6 +247,7 @@ const Dashboard = () => {
             <motion.div
               whileHover={{ scale: 1.02 }}
               className="p-4 rounded-xl bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20 border border-primary-200 dark:border-primary-800 cursor-pointer group"
+              onClick={handleCreateLicense}
             >
               <Key className="w-8 h-8 text-primary-600 mb-3 group-hover:scale-110 transition-transform" />
               <h3 className="font-semibold text-secondary-900 dark:text-secondary-100 mb-1">
@@ -239,6 +286,13 @@ const Dashboard = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Create License Modal */}
+      <CreateLicenseModal
+        isOpen={showCreateLicense}
+        onClose={() => setShowCreateLicense(false)}
+        onSuccess={handleLicenseCreated}
+      />
     </div>
   )
 }

@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
+import { authService } from '../services/api'
+import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext()
 
@@ -15,33 +17,56 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check for existing auth token
-    const token = localStorage.getItem('authToken')
-    if (token) {
-      // Validate token and set user
-      setUser({ id: 1, name: 'Admin User', email: 'admin@gateway.com' })
+    // Get initial session
+    const getInitialSession = async () => {
+      try {
+        const currentUser = await authService.getCurrentUser()
+        setUser(currentUser)
+      } catch (error) {
+        console.error('Error getting initial session:', error)
+      } finally {
+        setLoading(false)
+      }
     }
-    setLoading(false)
+
+    getInitialSession()
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          const currentUser = await authService.getCurrentUser()
+          setUser(currentUser)
+        } else {
+          setUser(null)
+        }
+        setLoading(false)
+      }
+    )
+
+    return () => subscription.unsubscribe()
   }, [])
 
   const login = async (credentials) => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      const mockUser = { id: 1, name: 'Admin User', email: credentials.email }
-      setUser(mockUser)
-      localStorage.setItem('authToken', 'mock-token')
-      
-      return { success: true }
+      setLoading(true)
+      const data = await authService.signIn(credentials.email, credentials.password)
+      return { success: true, data }
     } catch (error) {
+      console.error('Login error:', error)
       return { success: false, error: error.message }
+    } finally {
+      setLoading(false)
     }
   }
 
-  const logout = () => {
-    setUser(null)
-    localStorage.removeItem('authToken')
+  const logout = async () => {
+    try {
+      await authService.signOut()
+      setUser(null)
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
   }
 
   const value = {
@@ -49,7 +74,8 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     loading,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    isAdmin: user?.profile?.role === 'admin'
   }
 
   return (

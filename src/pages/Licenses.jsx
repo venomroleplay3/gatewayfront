@@ -11,44 +11,28 @@ import {
   Trash2,
   CheckCircle,
   XCircle,
-  Clock
+  Clock,
+  Download
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card'
 import Button from '../components/ui/Button'
+import CreateLicenseModal from '../components/modals/CreateLicenseModal'
+import { useApi, useAsyncAction } from '../hooks/useApi'
+import { licensesService, reportsService } from '../services/api'
+import { format } from 'date-fns'
 
 const Licenses = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
+  const [showCreateModal, setShowCreateModal] = useState(false)
 
-  const licenses = [
-    {
-      id: 'LIC-001',
-      product: 'Premium Software',
-      user: 'john@example.com',
-      status: 'active',
-      expiresAt: '2024-12-31',
-      createdAt: '2024-01-15',
-      hwid: 'ABC123DEF456'
-    },
-    {
-      id: 'LIC-002',
-      product: 'Basic Plan',
-      user: 'jane@example.com',
-      status: 'expired',
-      expiresAt: '2024-01-30',
-      createdAt: '2023-12-01',
-      hwid: 'XYZ789GHI012'
-    },
-    {
-      id: 'LIC-003',
-      product: 'Enterprise Suite',
-      user: 'admin@company.com',
-      status: 'pending',
-      expiresAt: '2024-06-30',
-      createdAt: '2024-02-01',
-      hwid: 'DEF456JKL789'
-    }
-  ]
+  const { data: licenses, loading, refetch } = useApi(
+    () => licensesService.getAll({ search: searchTerm, status: filterStatus }),
+    [searchTerm, filterStatus]
+  )
+
+  const { execute: executeDelete } = useAsyncAction()
+  const { execute: executeReport } = useAsyncAction()
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -76,13 +60,47 @@ const Licenses = () => {
     }
   }
 
-  const filteredLicenses = licenses.filter(license => {
-    const matchesSearch = license.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         license.product.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         license.user.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesFilter = filterStatus === 'all' || license.status === filterStatus
-    return matchesSearch && matchesFilter
-  })
+  const handleDelete = async (licenseId) => {
+    if (confirm('Are you sure you want to delete this license?')) {
+      await executeDelete(
+        () => licensesService.delete(licenseId),
+        {
+          successMessage: 'License deleted successfully',
+          onSuccess: refetch
+        }
+      )
+    }
+  }
+
+  const handleGenerateReport = async () => {
+    const result = await executeReport(
+      () => reportsService.generateLicenseReport({ search: searchTerm, status: filterStatus }),
+      {
+        successMessage: 'Report generated successfully'
+      }
+    )
+
+    if (result.success) {
+      // Download the report as JSON
+      const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `license-report-${format(new Date(), 'yyyy-MM-dd')}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="loading-spinner"></div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -99,10 +117,16 @@ const Licenses = () => {
           </p>
         </div>
         
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          Create License
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button variant="secondary" onClick={handleGenerateReport}>
+            <Download className="w-4 h-4 mr-2" />
+            Generate Report
+          </Button>
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Create License
+          </Button>
+        </div>
       </motion.div>
 
       {/* Filters */}
@@ -133,6 +157,7 @@ const Licenses = () => {
                 <option value="active">Active</option>
                 <option value="expired">Expired</option>
                 <option value="pending">Pending</option>
+                <option value="suspended">Suspended</option>
               </select>
             </div>
           </div>
@@ -144,118 +169,132 @@ const Licenses = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Key className="w-5 h-5" />
-            License Management
+            License Management ({licenses?.length || 0})
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-secondary-50 dark:bg-secondary-800/50">
-                <tr>
-                  <th className="text-left p-4 font-medium text-secondary-700 dark:text-secondary-300">
-                    License ID
-                  </th>
-                  <th className="text-left p-4 font-medium text-secondary-700 dark:text-secondary-300">
-                    Product
-                  </th>
-                  <th className="text-left p-4 font-medium text-secondary-700 dark:text-secondary-300">
-                    User
-                  </th>
-                  <th className="text-left p-4 font-medium text-secondary-700 dark:text-secondary-300">
-                    Status
-                  </th>
-                  <th className="text-left p-4 font-medium text-secondary-700 dark:text-secondary-300">
-                    Expires
-                  </th>
-                  <th className="text-left p-4 font-medium text-secondary-700 dark:text-secondary-300">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredLicenses.map((license, index) => (
-                  <motion.tr
-                    key={license.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="border-t border-secondary-200 dark:border-secondary-700 hover:bg-secondary-50 dark:hover:bg-secondary-800/50 transition-colors"
-                  >
-                    <td className="p-4">
-                      <div className="font-mono text-sm font-medium text-secondary-900 dark:text-secondary-100">
-                        {license.id}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="font-medium text-secondary-900 dark:text-secondary-100">
-                        {license.product}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="text-secondary-600 dark:text-secondary-400">
-                        {license.user}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(license.status)}
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(license.status)}`}>
-                          {license.status.charAt(0).toUpperCase() + license.status.slice(1)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="text-secondary-600 dark:text-secondary-400">
-                        {license.expiresAt}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm">
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <Trash2 className="w-4 h-4 text-error-500" />
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {licenses?.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-secondary-50 dark:bg-secondary-800/50">
+                  <tr>
+                    <th className="text-left p-4 font-medium text-secondary-700 dark:text-secondary-300">
+                      License Key
+                    </th>
+                    <th className="text-left p-4 font-medium text-secondary-700 dark:text-secondary-300">
+                      Product
+                    </th>
+                    <th className="text-left p-4 font-medium text-secondary-700 dark:text-secondary-300">
+                      User
+                    </th>
+                    <th className="text-left p-4 font-medium text-secondary-700 dark:text-secondary-300">
+                      Status
+                    </th>
+                    <th className="text-left p-4 font-medium text-secondary-700 dark:text-secondary-300">
+                      Expires
+                    </th>
+                    <th className="text-left p-4 font-medium text-secondary-700 dark:text-secondary-300">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {licenses.map((license, index) => (
+                    <motion.tr
+                      key={license.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="border-t border-secondary-200 dark:border-secondary-700 hover:bg-secondary-50 dark:hover:bg-secondary-800/50 transition-colors"
+                    >
+                      <td className="p-4">
+                        <div className="font-mono text-sm font-medium text-secondary-900 dark:text-secondary-100">
+                          {license.license_key}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="font-medium text-secondary-900 dark:text-secondary-100">
+                          {license.products?.name}
+                        </div>
+                        <div className="text-xs text-secondary-500">
+                          v{license.products?.version}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="text-secondary-600 dark:text-secondary-400">
+                          {license.users_profile?.full_name}
+                        </div>
+                        {license.users_profile?.company && (
+                          <div className="text-xs text-secondary-500">
+                            {license.users_profile.company}
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(license.status)}
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(license.status)}`}>
+                            {license.status.charAt(0).toUpperCase() + license.status.slice(1)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="text-secondary-600 dark:text-secondary-400">
+                          {license.expires_at ? format(new Date(license.expires_at), 'MMM dd, yyyy') : 'Never'}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <Button variant="ghost" size="sm">
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm">
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleDelete(license.id)}
+                          >
+                            <Trash2 className="w-4 h-4 text-error-500" />
+                          </Button>
+                          <Button variant="ghost" size="sm">
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Key className="w-12 h-12 text-secondary-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-secondary-900 dark:text-secondary-100 mb-2">
+                No licenses found
+              </h3>
+              <p className="text-secondary-600 dark:text-secondary-400 mb-6">
+                {searchTerm || filterStatus !== 'all' 
+                  ? 'Try adjusting your search or filter criteria'
+                  : 'Get started by creating your first license'
+                }
+              </p>
+              <Button onClick={() => setShowCreateModal(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Create License
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Empty State */}
-      {filteredLicenses.length === 0 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center py-12"
-        >
-          <Key className="w-12 h-12 text-secondary-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-secondary-900 dark:text-secondary-100 mb-2">
-            No licenses found
-          </h3>
-          <p className="text-secondary-600 dark:text-secondary-400 mb-6">
-            {searchTerm || filterStatus !== 'all' 
-              ? 'Try adjusting your search or filter criteria'
-              : 'Get started by creating your first license'
-            }
-          </p>
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            Create License
-          </Button>
-        </motion.div>
-      )}
+      {/* Create License Modal */}
+      <CreateLicenseModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={refetch}
+      />
     </div>
   )
 }
